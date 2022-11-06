@@ -1,5 +1,5 @@
 const express = require('express')
-const router = express.Router
+const router = express.Router()
 
 router.use('/', (req, res, next) => {
     res.json({ teste: 'teste'})
