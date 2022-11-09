@@ -1,8 +1,11 @@
 const { body, validationResult } = require('express-validator')
+const async = require('async')
 const passport = require('passport')
 const bcrypt = require('bcryptjs')
-const User = require('../models/User')
 const issueJWT = require('../utils/issueJWT')
+
+const User = require('../models/User')
+const Post = require('../models/Post')
 
 exports.signup = [
     body('first_name', 'First name required.').trim().notEmpty().escape(),
@@ -54,6 +57,28 @@ exports.login = (req, res, next) => {
         if (err) return next(err)
 
         const { token, expiresIn } = issueJWT(user)
-        res.json({ token, expiresIn })
+        res.status(200).json({ token, expiresIn })
     })(req, res)
+}
+
+exports.profile = (req, res, next) => {
+    async.parallel({
+        user(cb) {
+            User.findById(req.params.userID).exec(cb)
+        },
+        posts(cb) {
+            Post.find({ user: req.params.userID }).exec(cb)
+        }
+    }, (err, results) => {
+        if (err) return next(err)
+
+        res.status(200).json({
+            username: results.user.username,
+            name: results.user.full_name,
+            photo: results.user.photo,
+            age: results.user.age,
+            friends: results.user.friends,
+            posts: results.posts
+        })
+    })
 }

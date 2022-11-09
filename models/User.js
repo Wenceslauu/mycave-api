@@ -9,7 +9,6 @@ const UserSchema = new Schema({
     age: { type: Number, min: 12, required: true },
     photo: { data: Buffer, contentType: String },
     friends: [{ type: Schema.Types.ObjectId, ref: 'User'}],
-    friend_requests: [{ type: Schema.Types.ObjectId, ref: 'User'}]
 })
 
 UserSchema.virtual('full_name').get(function() {
