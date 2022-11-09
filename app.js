@@ -16,6 +16,7 @@ require('./configs/mongo')
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
+// middlewares
 app.use(helmet())
 app.use(compression())
 app.use(cors())
@@ -25,8 +26,14 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// passport setup
+const passport = require('passport')
+const { localStrat, jwtStrat } = require('./configs/passport')
+localStrat(passport)
+jwtStrat(passport)
+
 // routing setup
-require('./startup/routes')(app)
+require('./routes/index')(app)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -41,7 +48,7 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.json('404 not found');
+  res.json({ error: err });
 });
 
 module.exports = app;
