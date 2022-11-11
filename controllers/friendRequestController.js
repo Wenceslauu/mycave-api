@@ -1,16 +1,18 @@
 const passport = require('passport')
 const async = require('async')
+const checkProfileOwner = require('../middleware/checkProfileOwner')
 
 const User = require('../models/User')
 const FriendRequest = require('../models/FriendRequest')
 
 exports.friendRequests = [
-    passport.authenticate('jwt', { session: false }), 
+    passport.authenticate('jwt', { session: false }),
+    checkProfileOwner,
     (req, res, next) => {
         FriendRequest.find({ addressee: req.params.userID, status: 'Pending' }).populate('requester', ['username', 'photo']).exec((err, friendReq) => {
             if (err) return next(err)
 
-            res.status(400).json({ friendRequests: friendReq })
+            res.status(400).json({ friendRequests: friendReq, number_of_requests: friendReq.length })
         })
     }
 ]
@@ -59,6 +61,7 @@ exports.sendFriendRequest = [
 
 exports.answerFriendRequest = [
     passport.authenticate('jwt', { session: false }),
+    checkProfileOwner,
     (req, res, next) => {
         FriendRequest.findByIdAndUpdate(req.params.friendRequestID, { status: req.body.answer }, (err, friendReq) => {
             if (err) return next(err)
