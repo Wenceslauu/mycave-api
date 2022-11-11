@@ -12,6 +12,12 @@ var app = express();
 // database setup
 require('./configs/mongo')
 
+// cloudinary setup
+const cloudinary = require('cloudinary').v2
+cloudinary.config({
+  secure: true
+})
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
