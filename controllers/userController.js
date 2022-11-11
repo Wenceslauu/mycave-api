@@ -3,6 +3,7 @@ const async = require('async')
 const passport = require('passport')
 const bcrypt = require('bcryptjs')
 const cloudinary = require('cloudinary')
+const { unlinkSync } = require('fs')
 const issueJWT = require('../utils/issueJWT')
 const upload = require('../configs/multer')
 const checkProfileOwner = require('../middleware/checkProfileOwner')
@@ -145,6 +146,8 @@ exports.editPhoto = [
                 User.findByIdAndUpdate(req.params.userID, { photo: result.url }, (err) => {
                     if (err) return next(err)
         
+                    unlinkSync(req.file.path)
+
                     res.status(200).end()
                 })
             })
