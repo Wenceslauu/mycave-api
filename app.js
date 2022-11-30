@@ -34,8 +34,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // passport setup
 const passport = require('passport')
-const { localStrat, jwtStrat } = require('./configs/passport')
-localStrat(passport)
+const { jwtStrat } = require('./configs/passport')
 jwtStrat(passport)
 
 // routing setup
