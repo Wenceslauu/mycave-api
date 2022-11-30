@@ -9,7 +9,7 @@ exports.comments = [
         Comment.find({ post: req.params.postID }).populate('user', ['username', 'photo']).sort({ date: 'desc' }).exec((err, comments) => {
             if (err) return next(err)
 
-            res.status(200).json({ comments, number_of_comments: comments.length })
+            res.status(200).json({ comments, commentsNumber: comments.length })
         })
     }
 ]
@@ -20,8 +20,12 @@ exports.writeComment = [
     (req, res, next) => {
         const errors = validationResult(req)
 
+        const errorMsgs = errors.array().map((error) => {
+            return error.msg
+        })
+
         if (!errors.isEmpty()) 
-            res.status(400).json({ errors: errors.array() })
+            res.status(400).json({ errors: errorMsgs })
         else {
             const comment = new Comment({
                 text: req.body.text,

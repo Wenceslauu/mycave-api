@@ -6,7 +6,6 @@ const cloudinary = require('cloudinary')
 const { unlinkSync } = require('fs')
 const issueJWT = require('../utils/issueJWT')
 const upload = require('../configs/multer')
-const checkProfileOwner = require('../middleware/checkProfileOwner')
 
 const User = require('../models/User')
 const Post = require('../models/Post')
@@ -14,7 +13,7 @@ const Post = require('../models/Post')
 exports.signup = [
     body('first_name', 'First name required.').trim().notEmpty().escape(),
     body('last_name', 'Last name required.').trim().notEmpty().escape(),
-    body('age').exists({ checkNull: true }).withMessage('Age required').isInt({ min: 12 }).withMessage('You must be at least 12 years old to sign-up.').toInt(),
+    body('age').exists({ checkFalsy: true }).withMessage('Age required').isInt({ min: 12 }).withMessage('You must be at least 12 years old to sign-up.').toInt(),
     body('username', 'Username required.').trim().notEmpty().escape(),
     body('password').trim().notEmpty().withMessage('Password required.').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.').escape(),
     body('confirm_password', 'Passwords must match.').custom((value, { req }) => {
@@ -22,6 +21,10 @@ exports.signup = [
     }),
     (req, res, next) => {
         const errors = validationResult(req)
+
+        const errorMsgs = errors.array().map((error) => {
+            return error.msg
+        })
 
         const userRetry = new User({
             first_name: req.body.first_name,
@@ -31,7 +34,7 @@ exports.signup = [
         })
 
         if (!errors.isEmpty()) 
-            res.json({ user: userRetry, errors: errors.array() })
+            res.status(400).json({ user: userRetry, errors: errorMsgs })
         else {
             bcrypt.hash(req.body.password, 10, (err, hashed_password) => {
                 if (err) return next(err)
@@ -70,13 +73,26 @@ exports.signup = [
 ]
 
 exports.login = (req, res, next) => {
-    passport.authenticate('local', { session: false }, (err, user) => {
+    User.findOne({ username: req.body.username }, (err, user) => {
         if (err) return next(err)
-
-        const { token, expiresIn } = issueJWT(user)
-        res.status(200).json({ token, expiresIn })
-    })(req, res)
+        
+        if (!user) {
+            res.status(400).json({ error: "Incorrect username" })
+        } else {
+            bcrypt.compare(req.body.password, user.password, (err, result) => {
+                if (err) return next(err)
+                
+                if (result) {
+                    const { token, expiresIn } = issueJWT(user)
+                    res.status(200).json({ token, expiresIn })
+                } else {
+                    res.status(400).json({ error: "Incorrect password" })
+                }
+            })
+        }
+    })
 }
+
 
 exports.users = [
     passport.authenticate('jwt', { session: false }),
@@ -84,7 +100,7 @@ exports.users = [
         User.find({}, ['username', 'photo']).exec((err, users) => {
             if (err) return next(err)
 
-            res.status(200).json({ users, number_of_users: users.length })
+            res.status(200).json({ users, usersNumber: users.length })
         })
     }
 ]
@@ -95,12 +111,39 @@ exports.friends = [
         User.findById(req.params.userID, 'friends').populate('friends', ['username', 'photo']).exec((err, user) => {
             if (err) return next(err)
 
-            res.status(200).json({ friends: user.friends, number_of_friends: user.friends.length })
+            res.status(200).json({ friends: user.friends, friendsNumber: user.friends.length })
         })
     }
 ]
 
-exports.profile = [
+exports.ownProfile = [
+    passport.authenticate('jwt', { session: false }),
+    (req, res, next) => {
+        async.parallel({
+            user(cb) {
+                User.findById(req.user._id).exec(cb)
+            },
+            posts(cb) {
+                Post.find({ user: req.params.userID }).populate('user', ['username', 'photo']).sort({ date: 'desc' }).exec(cb)
+            }
+        }, (err, results) => {
+            if (err) return next(err)
+
+            res.status(200).json({
+                user: {
+                    username: results.user.username,
+                    name: results.user.full_name,
+                    photo: results.user.photo,
+                    age: results.user.age,
+                },
+                posts: results.posts,
+                postsNumber: results.posts.length
+            })
+        })
+    }
+]
+
+exports.anyProfile = [
     passport.authenticate('jwt', { session: false }),
     (req, res, next) => {
         async.parallel({
@@ -121,7 +164,7 @@ exports.profile = [
                     age: results.user.age,
                 },
                 posts: results.posts,
-                number_of_posts: results.posts.length
+                postsNumber: results.posts.length
             })
         })
     }
@@ -129,7 +172,6 @@ exports.profile = [
 
 exports.editPhoto = [
     passport.authenticate('jwt', { session: false }),
-    checkProfileOwner,
     upload.single('photo'),
     (req, res, next) => {
         if (!req.file)
@@ -143,7 +185,7 @@ exports.editPhoto = [
             }, (err, result) => {
                 if (err) return next(err)
 
-                User.findByIdAndUpdate(req.params.userID, { photo: result.url }, (err) => {
+                User.findByIdAndUpdate(req.user._id, { photo: result.url }, (err) => {
                     if (err) return next(err)
         
                     unlinkSync(req.file.path)

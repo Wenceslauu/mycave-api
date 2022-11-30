@@ -16,7 +16,7 @@ router.post('/posts', postController.writePost)
 
 router.delete('/posts/:postID', postController.deletePost)
 
-router.put('/posts/:postID/like', postController.toggleLike)
+router.put('/posts/:postID/toggle-like', postController.toggleLike)
 
 router.get('/posts/:postID/comments', commentController.comments)
 
@@ -24,19 +24,21 @@ router.post('/posts/:postID/comments', commentController.writeComment)
 
 router.delete('/posts/:postID/comments/:commentID', commentController.deleteComment)
 
+router.get('/user', userController.ownProfile)
+
+router.post('/user/photo', userController.editPhoto)
+
 router.get('/users', userController.users)
 
-router.get('/users/:userID', userController.profile)
+router.get('/users/:userID', userController.anyProfile)
 
 router.get('/users/:userID/friends', userController.friends)
 
-router.post('/users/:userID/photo', userController.editPhoto)
-
-router.get('/users/:userID/friend-requests', friendRequestController.friendRequests)
+router.get('/user/friend-requests', friendRequestController.friendRequests)
 
 router.post('/users/:userID/friend-requests', friendRequestController.sendFriendRequest)
 
-router.put('/users/:userID/friend-requests/:friendRequestID', friendRequestController.answerFriendRequest)
+router.put('/user/friend-requests/:friendRequestID', friendRequestController.answerFriendRequest)
 
 
 module.exports = router
