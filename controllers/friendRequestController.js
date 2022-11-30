@@ -1,18 +1,16 @@
 const passport = require('passport')
 const async = require('async')
-const checkProfileOwner = require('../middleware/checkProfileOwner')
 
 const User = require('../models/User')
 const FriendRequest = require('../models/FriendRequest')
 
 exports.friendRequests = [
     passport.authenticate('jwt', { session: false }),
-    checkProfileOwner,
     (req, res, next) => {
-        FriendRequest.find({ addressee: req.params.userID, status: 'Pending' }).populate('requester', ['username', 'photo']).exec((err, friendReq) => {
+        FriendRequest.find({ addressee: req.user._id, status: 'Pending' }).populate('requester', ['username', 'photo']).exec((err, friendReq) => {
             if (err) return next(err)
 
-            res.status(400).json({ friendRequests: friendReq, number_of_requests: friendReq.length })
+            res.status(200).json({ friendRequests: friendReq, requestsNumber: friendReq.length })
         })
     }
 ]
@@ -61,32 +59,32 @@ exports.sendFriendRequest = [
 
 exports.answerFriendRequest = [
     passport.authenticate('jwt', { session: false }),
-    checkProfileOwner,
     (req, res, next) => {
-        FriendRequest.findByIdAndUpdate(req.params.friendRequestID, { status: req.body.answer }, (err, friendReq) => {
-            if (err) return next(err)
+        if (req.body.answer !== 'Accepted' && req.body.answer !== 'Rejected')
+            res.status(400).json({ error: 'Invalid friend request answer'})
+        else {
+            FriendRequest.findByIdAndUpdate(req.params.friendRequestID, { status: req.body.answer }, (err, friendReq) => {
+                if (err) return next(err)
 
-            // adds both users as friends to each other
-            if (req.body.answer === 'Accepted') {
-                async.parallel({
-                    requester(cb) {
-                        User.findByIdAndUpdate(friendReq.requester, { $push: { friends: friendReq.addressee }}).exec(cb)
-                    },
-                    addressee(cb) {
-                        User.findByIdAndUpdate(friendReq.addressee, { $push: { friends: friendReq.requester }}).exec(cb)
-                    }
-                }, (err) => {
-                    if (err) return next(err)
+                // adds both users as friends to each other
+                if (req.body.answer === 'Accepted') {
+                    async.parallel({
+                        requester(cb) {
+                            User.findByIdAndUpdate(friendReq.requester, { $push: { friends: friendReq.addressee }}).exec(cb)
+                        },
+                        addressee(cb) {
+                            User.findByIdAndUpdate(friendReq.addressee, { $push: { friends: friendReq.requester }}).exec(cb)
+                        }
+                    }, (err) => {
+                        if (err) return next(err)
 
-                    res.json(200).end()
-                })
-            } 
+                        res.status(200).end()
+                    })
+                } 
 
-            else if (req.body.answer === 'Rejected')
-                res.json(200).end()
-
-            else 
-                return next(new Error('Invalid friend request answer.'))
-        })
+                else if (req.body.answer === 'Rejected')
+                    res.status(200).end()
+            })
+        }
     }
 ]
