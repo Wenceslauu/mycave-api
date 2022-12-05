@@ -93,6 +93,16 @@ exports.login = (req, res, next) => {
     })
 }
 
+exports.ownUser = [
+    passport.authenticate('jwt', { session: false }),
+    (req, res, next) => {
+        User.findById(req.user._id, ['_id', 'username', 'photo'], (err, user) => {
+            if (err) return next(err)
+
+            res.status(200).json({ user })
+        })
+    }
+]
 
 exports.users = [
     passport.authenticate('jwt', { session: false }),
@@ -112,33 +122,6 @@ exports.friends = [
             if (err) return next(err)
 
             res.status(200).json({ friends: user.friends, friendsNumber: user.friends.length })
-        })
-    }
-]
-
-exports.ownProfile = [
-    passport.authenticate('jwt', { session: false }),
-    (req, res, next) => {
-        async.parallel({
-            user(cb) {
-                User.findById(req.user._id).exec(cb)
-            },
-            posts(cb) {
-                Post.find({ user: req.params.userID }).populate('user', ['username', 'photo']).sort({ date: 'desc' }).exec(cb)
-            }
-        }, (err, results) => {
-            if (err) return next(err)
-
-            res.status(200).json({
-                user: {
-                    username: results.user.username,
-                    name: results.user.full_name,
-                    photo: results.user.photo,
-                    age: results.user.age,
-                },
-                posts: results.posts,
-                postsNumber: results.posts.length
-            })
         })
     }
 ]

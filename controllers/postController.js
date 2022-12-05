@@ -8,7 +8,7 @@ const Comment = require('../models/Comment')
 exports.posts = [
     passport.authenticate('jwt', { session: false }),
     (req, res, next) => {
-        Post.find({ $or: [{ user: { $in: req.user.friends }}, { user: req.user._id }]}).populate('user', ['username', 'photo']).sort({ date: 'desc', _id: 'desc' }).skip((req.query.page > 0) ? (req.query.page * 5) : 0).limit(5).exec((err, posts) => {
+        Post.find({ $or: [{ user: { $in: req.user.friends }}, { user: req.user._id }]}).populate('user', ['username', 'photo']).sort({ date: 'desc', _id: 'desc' }).skip((req.query.page > 0) ? ((req.query.page * 5) + req.query.offset) : 0).limit(5).exec((err, posts) => {
             if (err) return next(err)
 
             res.status(200).json({ posts })

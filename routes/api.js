@@ -24,7 +24,7 @@ router.post('/posts/:postID/comments', commentController.writeComment)
 
 router.delete('/posts/:postID/comments/:commentID', commentController.deleteComment)
 
-router.get('/user', userController.ownProfile)
+router.get('/user', userController.ownUser)
 
 router.post('/user/photo', userController.editPhoto)
 
