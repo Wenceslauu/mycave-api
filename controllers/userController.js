@@ -65,7 +65,7 @@ exports.signup = [
                 user.save((err) => {
                     if (err) return next(err)
 
-                    res.status(200).end()
+                    res.status(200).json({ success: "Signup successful"})
                 })
             })
         }
@@ -84,7 +84,7 @@ exports.login = (req, res, next) => {
                 
                 if (result) {
                     const { token, expiresIn } = issueJWT(user)
-                    res.status(200).json({ token, expiresIn })
+                    res.status(200).json({ token, expiresIn, success: "Login successful" })
                 } else {
                     res.status(400).json({ error: "Incorrect password" })
                 }
@@ -96,7 +96,7 @@ exports.login = (req, res, next) => {
 exports.ownUser = [
     passport.authenticate('jwt', { session: false }),
     (req, res, next) => {
-        User.findById(req.user._id, ['_id', 'username', 'photo'], (err, user) => {
+        User.findById(req.user._id, ['_id', 'username', 'photo', 'friends'], (err, user) => {
             if (err) return next(err)
 
             res.status(200).json({ user })
@@ -110,18 +110,18 @@ exports.users = [
         User.find({}, ['username', 'photo']).exec((err, users) => {
             if (err) return next(err)
 
-            res.status(200).json({ users, usersNumber: users.length })
+            res.status(200).json({ users })
         })
     }
 ]
 
-exports.friends = [
+exports.friendSuggestions = [
     passport.authenticate('jwt', { session: false }),
     (req, res, next) => {
-        User.findById(req.params.userID, 'friends').populate('friends', ['username', 'photo']).exec((err, user) => {
+        User.find({ $nor: [{ _id: { $in: req.user.friends }}, { _id: req.user._id }]}, ['username', 'photo']).limit(3).exec((err, users) => {
             if (err) return next(err)
 
-            res.status(200).json({ friends: user.friends, friendsNumber: user.friends.length })
+            res.status(200).json({ users })
         })
     }
 ]
@@ -131,7 +131,7 @@ exports.anyProfile = [
     (req, res, next) => {
         async.parallel({
             user(cb) {
-                User.findById(req.params.userID).exec(cb)
+                User.findById(req.params.userID).populate('friends', ['username', 'photo']).exec(cb)
             },
             posts(cb) {
                 Post.find({ user: req.params.userID }).populate('user', ['username', 'photo']).sort({ date: 'desc' }).exec(cb)
@@ -145,21 +145,27 @@ exports.anyProfile = [
                     name: results.user.full_name,
                     photo: results.user.photo,
                     age: results.user.age,
+                    bio: results.user.bio,
+                    isBot: results.user.isBot
                 },
+                friends: results.user.friends,
                 posts: results.posts,
-                postsNumber: results.posts.length
             })
         })
     }
 ]
 
-exports.editPhoto = [
+exports.editProfile = [
     passport.authenticate('jwt', { session: false }),
     upload.single('photo'),
     (req, res, next) => {
-        if (!req.file)
-            res.status(200).json({ error: 'Only .png, .jpg and .jpeg are allowed.' })
-        else {
+        if (!req.file) {            
+            User.findByIdAndUpdate(req.user._id, { bio: req.body.bio }, (err) => {
+                if (err) return next(err)
+    
+                res.status(200).json({ success: "Profile edited" })
+            })
+        } else {
             cloudinary.v2.uploader.upload(req.file.path, {
                 width: 512,
                 height: 512,
@@ -168,14 +174,22 @@ exports.editPhoto = [
             }, (err, result) => {
                 if (err) return next(err)
 
-                User.findByIdAndUpdate(req.user._id, { photo: result.url }, (err) => {
+                User.findByIdAndUpdate(req.user._id, { photo: result.url, bio: req.body.bio }, (err) => {
                     if (err) return next(err)
         
                     unlinkSync(req.file.path)
 
-                    res.status(200).end()
+                    res.status(200).json({ url: result.url, success: "Profile edited" })
                 })
             })
         }
     }
 ]
+
+exports.countUsers = (req, res, next) => {
+    User.countDocuments().exec((err, count) => {
+        if (err) return next(err)
+
+        res.status(200).json({ count })
+    })
+}

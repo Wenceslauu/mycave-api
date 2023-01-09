@@ -10,7 +10,7 @@ exports.friendRequests = [
         FriendRequest.find({ addressee: req.user._id, status: 'Pending' }).populate('requester', ['username', 'photo']).exec((err, friendReq) => {
             if (err) return next(err)
 
-            res.status(200).json({ friendRequests: friendReq, requestsNumber: friendReq.length })
+            res.status(200).json({ friendRequests: friendReq })
         })
     }
 ]
@@ -49,7 +49,7 @@ exports.sendFriendRequest = [
                     friendReq.save((err) => {
                         if (err) return next(err)
             
-                        res.status(200).end()
+                        res.status(200).json({ success: "Friend request sent" })
                     })
                 }
             })
@@ -78,12 +78,12 @@ exports.answerFriendRequest = [
                     }, (err) => {
                         if (err) return next(err)
 
-                        res.status(200).end()
+                        res.status(200).json({ success: "Friend added" })
                     })
                 } 
 
                 else if (req.body.answer === 'Rejected')
-                    res.status(200).end()
+                    res.status(200).json({ success: "Request rejected" })
             })
         }
     }

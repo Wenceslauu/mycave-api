@@ -9,7 +9,7 @@ exports.comments = [
         Comment.find({ post: req.params.postID }).populate('user', ['username', 'photo']).sort({ date: 'desc' }).exec((err, comments) => {
             if (err) return next(err)
 
-            res.status(200).json({ comments, commentsNumber: comments.length })
+            res.status(200).json({ comments })
         })
     }
 ]
@@ -37,7 +37,7 @@ exports.writeComment = [
             comment.save((err) => {
                 if (err) return next(err)
 
-                res.status(200).end()
+                res.status(200).json({ commentID: comment._id, commentDate: comment.date, success: "Comment wrote" })
             })
         }
     }
@@ -56,9 +56,17 @@ exports.deleteComment = [
                 Comment.findByIdAndDelete(req.params.commentID, (err) => {
                     if (err) return next(err)
 
-                    res.status(200).end()
+                    res.status(200).json({ success: "Comment deleted" })
                 })
             }
         })
     }
 ]
+
+exports.countComments = (req, res, next) => {
+    Comment.countDocuments().exec((err, count) => {
+        if (err) return next(err)
+
+        res.status(200).json({ count })
+    })
+}

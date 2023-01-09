@@ -8,7 +8,7 @@ const Comment = require('../models/Comment')
 exports.posts = [
     passport.authenticate('jwt', { session: false }),
     (req, res, next) => {
-        Post.find({ $or: [{ user: { $in: req.user.friends }}, { user: req.user._id }]}).populate('user', ['username', 'photo']).sort({ date: 'desc', _id: 'desc' }).skip((req.query.page > 0) ? ((req.query.page * 5) + req.query.offset) : 0).limit(5).exec((err, posts) => {
+        Post.find({ $or: [{ user: { $in: req.user.friends }}, { user: req.user._id }]}).populate('user', ['username', 'photo']).sort({ date: 'desc', _id: 'desc' }).skip(parseInt(req.query.page * 5) + parseInt(req.query.offset)).limit(5).exec((err, posts) => {
             if (err) return next(err)
 
             res.status(200).json({ posts })
@@ -38,7 +38,7 @@ exports.writePost = [
             post.save((err) => {
                 if (err) return next(err)
 
-                res.status(200).end()
+                res.status(200).json({ postID: post._id, postDate: post.date, success: "Post wrote" })
             })
         }
     }
@@ -63,7 +63,7 @@ exports.deletePost = [
                 }, (err) => {
                     if (err) return next(err)
             
-                    res.status(200).end()
+                    res.status(200).json({ success: "Post deleted"})
                 })
             }
         })
@@ -93,3 +93,11 @@ exports.toggleLike = [
         })
     }
 ]
+
+exports.countPosts = (req, res, next) => {
+    Post.countDocuments().exec((err, count) => {
+        if (err) return next(err)
+
+        res.status(200).json({ count })
+    })
+}
