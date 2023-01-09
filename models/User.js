@@ -7,6 +7,8 @@ const UserSchema = new Schema({
     username: { type: String, required: true },
     password: { type: String, minLength: 8, required: true },
     age: { type: Number, min: 12, required: true },
+    bio: { type: String },
+    isBot: { type: Boolean, default: false },
     photo: { type: String },
     friends: [{ type: Schema.Types.ObjectId, ref: 'User'}]
 })
